@@ -1,9 +1,9 @@
 import argparse
 import re
 from typing import List
-from time import sleep
 
 from selenium import webdriver
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.common.by import By
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
@@ -55,14 +55,13 @@ def get_num_of_slides(driver: webdriver) -> int:
             .scroll_from_origin(scroll_origin, 0, 400)\
             .perform()
 
-        total_slides = driver.find_element(By.ID, "punch-total-slide-count")
-        driver.execute_script("arguments[0].style.display = 'block';", total_slides)  # total_slide element goes to display:none when not scrolling
-        return int(re.findall("\d+", total_slides.text)[0])
+        total_slides = WebDriverWait(driver, timeout=1).until(lambda x: x.find_element(By.ID, "punch-total-slide-count").text)
+        return int(total_slides.split()[0])
     except NoSuchElementException:
-        print("Error while looking for an element while calculating number of slides")
+        print(f"Error while looking for an element while calculating number of slides for {driver.current_url}")
         return 0
     except IndexError:
-        print("Error while performing regex to find total number of slides")
+        print(f"Error while performing regex to find total number of slides for {driver.current_url}")
         return 0
 
 
@@ -86,7 +85,7 @@ def download_slides(slides_url: str, driver: webdriver) -> List:
         .send_keys(Keys.F5)\
         .key_up(Keys.CONTROL)\
         .perform()  # Enter presentation mode for high rez images
-    sleep(1)  # give webdriver a second to load into full-screen otherwise you will get a black image in pdf
+    driver.implicitly_wait(1)  # give webdriver a second to load into full-screen otherwise you will get a black image in pdf
 
     for i in range(0, num_slides):
         slide_screenshot = screenshot_slide(driver)
