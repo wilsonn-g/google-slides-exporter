@@ -8,7 +8,7 @@ Google Slides already has an export feature, however, document owners are allowe
 
 - Install dependency packages
 
-      pip install validators webdriver-manager selenium pillow
+      pip install webdriver-manager selenium pillow
 
 - OR if you are having trouble with newer versions of the packages
 
@@ -18,8 +18,9 @@ Google Slides already has an export feature, however, document owners are allowe
 
 - usage:
 
-      main.py [-h] [--slides] [FILE/URL]
+      main.py [-h] [--url] [SLIDES_URL] [--slides] [FILE]
 
 - Example
 
-      python main.py --slides https://docs.google.com/presentation/d/1pA4QO0WEVGbTMpmKBV_1n3458PKxtvvFzDKZi_rsgAo
+      python main.py --url https://docs.google.com/presentation/d/1pA4QO0WEVGbTMpmKBV_1n3458PKxtvvFzDKZi_rsgAo
+      python main.py --slides ./slides-list.txt
