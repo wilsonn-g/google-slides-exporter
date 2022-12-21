@@ -11,6 +11,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.keys import Keys
 
 from PIL import Image
@@ -28,7 +29,7 @@ def create_driver_instance() -> webdriver:
         service=Service(ChromeDriverManager().install()),
         options=chrome_options
     )
-    chrome_driver.set_window_size(1280, 720)
+    chrome_driver.set_window_size(1920, 1080)
     return chrome_driver
 
 
@@ -55,15 +56,19 @@ def get_num_of_slides(driver: webdriver) -> int:
             .scroll_from_origin(scroll_origin, 0, 400) \
             .perform()
 
-        total_slides = WebDriverWait(driver, timeout=1).until(
+        total_slides = WebDriverWait(driver, timeout=5).until(
             lambda x: x.find_element(By.ID, "punch-total-slide-count").text)
         return int(total_slides.split()[0])
     except NoSuchElementException:
         print(f"Error while looking for an element while calculating number of slides for {driver.current_url}")
         return 0
     except IndexError:
-        print(f"Error while performing regex to find total number of slides for {driver.current_url}")
+        print(f"Error while splitting innerText to find total number of slides for {driver.current_url}")
         return 0
+    except TimeoutException:
+        print(f"Error while waiting for innerText to be valid to find total number of slides for {driver.current_url}")
+        slide_thumbnails = driver.find_elements(By.CSS_SELECTOR, "#filmstrip > div.punch-filmstrip-scroll > svg > g")  # presentations that have no scroll bar
+        return len(slide_thumbnails)
 
 
 def download_slides(slides_url: str, driver: webdriver) -> List:
@@ -169,7 +174,10 @@ if __name__ == "__main__":
     for presentation in presentations_to_download:
         slide_deck = download_slides(presentation, driver)
         title = sanitize_filename(scrape_title(driver))
+        print(title)
         if len(slide_deck) > 0:
             slide_deck[0].save(f"{title}.pdf", save_all=True, append_images=slide_deck[1:], quality=95)
+        else:
+            print(f"Error: got a slide deck of 0 for {presentation}")
 
     driver.close()
