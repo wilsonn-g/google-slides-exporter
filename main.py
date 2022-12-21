@@ -10,7 +10,6 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.actions.wheel_input import ScrollOrigin
-from selenium.webdriver.remote.webelement import WebElement
 from webdriver_manager.chrome import ChromeDriverManager
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.keys import Keys
@@ -25,9 +24,10 @@ def create_driver_instance() -> webdriver:
     :return: Chrome webdriver instance
     """
     chrome_options = Options()
-    chrome_options.headless = True
+    # chrome_options.headless = True
     chrome_driver = webdriver.Chrome(
-        service=Service(ChromeDriverManager().install()), options=chrome_options
+        service=Service(ChromeDriverManager().install()),
+        options=chrome_options
     )
     chrome_driver.maximize_window()
     return chrome_driver
@@ -61,7 +61,9 @@ def get_num_of_slides(driver: webdriver) -> int:
         # Text within total slide count element is empty on load until filmstrip is scrolled on
         filmstrip = driver.find_element(By.ID, "filmstrip")
         scroll_origin = ScrollOrigin.from_element(filmstrip, 0, 200)
-        ActionChains(driver).scroll_from_origin(scroll_origin, 0, 400).perform()
+        ActionChains(driver)\
+            .scroll_from_origin(scroll_origin, 0, 400)\
+            .perform()
 
         total_slides = driver.find_element(By.ID, "punch-total-slide-count")
         return int(re.findall("\d+", total_slides.text)[0])
@@ -73,7 +75,7 @@ def get_num_of_slides(driver: webdriver) -> int:
         return 0
 
 
-def download_slides(slides_url: str, driver: webdriver):
+def download_slides(slides_url: str, driver: webdriver) -> List:
     """
     Screenshots every slide in the slide deck
     :param driver: Selenium webdriver instance
@@ -83,25 +85,35 @@ def download_slides(slides_url: str, driver: webdriver):
     driver.get(slides_url)
     num_slides = get_num_of_slides(driver)
     slides = []
-    slide_element = driver.find_element(By.ID, "canvas-container")
+    ActionChains(driver)\
+        .key_down(Keys.CONTROL)\
+        .send_keys(Keys.F5)\
+        .key_up(Keys.CONTROL)\
+        .perform()  # Enter presentation mode for high rez images
+    sleep(1)  # give webdriver a second to load into full-screen otherwise you will get a black image in pdf
 
     for i in range(0, num_slides):
-        slide_screenshot = screenshot_element(driver, slide_element)
+        slide_screenshot = screenshot_slide(driver)
         slides.append(slide_screenshot)
-        ActionChains(driver).send_keys(Keys.DOWN).perform()
+        ActionChains(driver)\
+            .send_keys(Keys.ARROW_DOWN)\
+            .perform()
 
+    ActionChains(driver)\
+        .send_keys(Keys.ESCAPE)\
+        .perform()
     return slides
 
 
-def screenshot_element(driver: webdriver, element: WebElement) -> Image:
+def screenshot_slide(driver: webdriver) -> Image:
     """
     Screenshots the specified element
     :param element: HTML element
     :param driver: Selenium webdriver instance
     :return: A screenshot of the slide as a PIL.Image
     """
-    image_b64 = element.screenshot_as_png
-    buf = io.BytesIO(image_b64)
+    image = driver.get_screenshot_as_png()
+    buf = io.BytesIO(image)
     return Image.open(buf).convert("RGB")
 
 
@@ -109,15 +121,15 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="SlidesExporter",
         usage="main.py [-h] [--slides] [FILE/URL]\n Example: python main.py "
-        "--slides https://docs.google.com/presentation/d/1pA4QO0WEVGbTMpmKBV_1n3458PKxtvvFzDKZi_rsgAo\n "
-        "python main.py --slides ./slides-list.txt",
+              "--slides https://docs.google.com/presentation/d/1pA4QO0WEVGbTMpmKBV_1n3458PKxtvvFzDKZi_rsgAo\n "
+              "python main.py --slides ./slides-list.txt",
         description="Exports Google Slides presentations as a PDF even if the exporting is disabled by the owner",
     )
 
     parser.add_argument(
         "--slides",
         help="URL link to the Google Slides presentation you want to copy or path to a text"
-        "file containing multiple Slides URLs (each have to be on a newline)",
+             "file containing multiple Slides URLs (each have to be on a newline)",
         type=str,
         required=True,
     )
