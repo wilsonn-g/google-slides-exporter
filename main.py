@@ -1,6 +1,6 @@
 import argparse
-import re
 from typing import List
+from time import sleep
 
 from selenium import webdriver
 from selenium.webdriver.support.ui import WebDriverWait
@@ -28,7 +28,7 @@ def create_driver_instance() -> webdriver:
         service=Service(ChromeDriverManager().install()),
         options=chrome_options
     )
-    chrome_driver.maximize_window()
+    chrome_driver.set_window_size(1280, 720)
     return chrome_driver
 
 
@@ -51,11 +51,12 @@ def get_num_of_slides(driver: webdriver) -> int:
         # Text within total slide count element is empty on load until filmstrip is scrolled on
         filmstrip = driver.find_element(By.ID, "filmstrip")
         scroll_origin = ScrollOrigin.from_element(filmstrip, 0, 200)
-        ActionChains(driver)\
-            .scroll_from_origin(scroll_origin, 0, 400)\
+        ActionChains(driver) \
+            .scroll_from_origin(scroll_origin, 0, 400) \
             .perform()
 
-        total_slides = WebDriverWait(driver, timeout=1).until(lambda x: x.find_element(By.ID, "punch-total-slide-count").text)
+        total_slides = WebDriverWait(driver, timeout=1).until(
+            lambda x: x.find_element(By.ID, "punch-total-slide-count").text)
         return int(total_slides.split()[0])
     except NoSuchElementException:
         print(f"Error while looking for an element while calculating number of slides for {driver.current_url}")
@@ -80,22 +81,22 @@ def download_slides(slides_url: str, driver: webdriver) -> List:
 
     num_slides = get_num_of_slides(driver)
     slides = []
-    ActionChains(driver)\
-        .key_down(Keys.CONTROL)\
-        .send_keys(Keys.F5)\
-        .key_up(Keys.CONTROL)\
+    ActionChains(driver) \
+        .key_down(Keys.CONTROL) \
+        .send_keys(Keys.F5) \
+        .key_up(Keys.CONTROL) \
         .perform()  # Enter presentation mode for high rez images
-    driver.implicitly_wait(1)  # give webdriver a second to load into full-screen otherwise you will get a black image in pdf
+    sleep(0.5)  # give webdriver a second to load into full-screen otherwise you will get a black image in pdf
 
     for i in range(0, num_slides):
         slide_screenshot = screenshot_slide(driver)
         slides.append(slide_screenshot)
-        ActionChains(driver)\
-            .send_keys(Keys.ARROW_DOWN)\
+        ActionChains(driver) \
+            .send_keys(Keys.ARROW_DOWN) \
             .perform()
 
-    ActionChains(driver)\
-        .send_keys(Keys.ESCAPE)\
+    ActionChains(driver) \
+        .send_keys(Keys.ESCAPE) \
         .perform()
     return slides
 
@@ -127,8 +128,8 @@ def sanitize_filename(filename: str) -> str:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         prog="SlidesExporter",
-        usage="main.py [-h] [--url] [SLIDES_URL] [--slides] [FILE]\n Example: python main.py "
-              "--url https://docs.google.com/presentation/d/1pA4QO0WEVGbTMpmKBV_1n3458PKxtvvFzDKZi_rsgAo\n "
+        usage="main.py [-h] [--url] [SLIDES_URL] [--slides] [FILE]\n Example: python main.py"
+              "--url https://docs.google.com/presentation/d/1pA4QO0WEVGbTMpmKBV_1n3458PKxtvvFzDKZi_rsgAo\n"
               "python main.py --slides ./slides-list.txt",
         description="Exports Google Slides presentations as a PDF even if the exporting is disabled by the owner",
     )
